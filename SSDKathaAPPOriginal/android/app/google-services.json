@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "545437686783",
+    "project_id": "kathaappssd",
+    "storage_bucket": "kathaappssd.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:545437686783:android:7246d860ea1436684525ca",
+        "android_client_info": {
+          "package_name": "com.kathaapp.katha"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAze1gk67VY2xpRRn0uDnb18ul0ssX-230"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
