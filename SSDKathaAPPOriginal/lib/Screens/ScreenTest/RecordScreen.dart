@@ -55,6 +55,13 @@ class _RecordScreenState extends State<RecordScreen> {
     final url = await player.load("S3_1.wav");
     audioPlayer.setSourceUrl(url.path);
   }
+
+  Future<Map<String, dynamic>> readConfig() async {
+    final String configString =
+    await File('path/to/config.json').readAsString();
+    return jsonDecode(configString);
+  }
+
   Future<void> _startRecording() async {
     try {
       if (await FlutterSoundRecorder().isRecording) {
@@ -108,39 +115,40 @@ class _RecordScreenState extends State<RecordScreen> {
   }
 
   Future<void> uploadAudio(File audioFile, String inputWord) async {
-    var request = http.MultipartRequest('POST', Uri.parse('http://192.168.8.181:5000/predict'));
-    request.fields['input_word'] = inputWord;
-    request.files.add(http.MultipartFile.fromBytes('audio_file', await audioFile.readAsBytes(), filename: 'audio.wav'));
+    try {
+      Map<String, dynamic> config = await readConfig(); // Read the config
+      String serverUrl = config["SERVER_URL"]; // Get the server URL from config
 
-    var response = await request.send();
+      var request = http.MultipartRequest('POST', Uri.parse(serverUrl)); // Use HTTPS from config
+      request.fields['input_word'] = inputWord;
+      request.files.add(http.MultipartFile.fromBytes('audio_file', await audioFile.readAsBytes(), filename: 'audio.wav',));
 
-    if (response.statusCode == 200) {
-      var result = await http.Response.fromStream(response);
-      print('Result: ${result.body}');
-      var parsedJson = json.decode(result.body);
-      if (parsedJson['result'] == "Correct Answer") {
-        audioPlayer.dispose();  audioPlayer.pause();
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => Correct(),
-          ),
-        );
+      var response = await request.send();
+
+      if (response.statusCode == 200) {
+        var result = await http.Response.fromStream(response);
+        var parsedJson = json.decode(result.body);
+
+        audioPlayer.dispose();
+        audioPlayer.pause();
+
+        if (parsedJson['result'] == "Correct Answer") {
+          Navigator.push(context, MaterialPageRoute(
+            builder: (context) => const Correct(),
+          ));
+        } else if (parsedJson['result'] == "Wrong Answer") {
+          Navigator.push(context, MaterialPageRoute(
+            builder: (context) => const InCorrect(),
+          ));
+        }
+      } else {
+        print('Failed to upload audio');
       }
-      if (parsedJson['result'] == "Wrong Answer") {
-        audioPlayer.dispose();  audioPlayer.pause();
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => InCorrect(),
-          ),
-        );
-      }
-
-    } else {
-      print('Failed to upload audio');
+    } catch (e) {
+      print("An error occurred: $e");
     }
   }
+
   @override
   void dispose() {
     _recorder!.closeAudioSession();
