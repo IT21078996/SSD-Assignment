@@ -1,8 +1,15 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:flutter/foundation.dart';
 import 'package:katha/splashScreen.dart';
-
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
+import 'package:flutter/services.dart';
+
+import 'package:flutter_jailbreak_detection/flutter_jailbreak_detection.dart';
+
 import 'Provider/internet_provider.dart';
 import 'Provider/sign_in_provider.dart';
 import 'Screens/GameScreen/Game/testing/dancing_screen.dart';
@@ -15,6 +22,7 @@ import 'Screens/ScreenTest/HowToSpeak.dart';
 import 'firebase_options.dart';
 import 'package:http/http.dart' as http;
 
+//could metadata potentially exposed valnarability
 void fetchMetaData() async {
   final response = await http.get(Uri.parse('http://169.254.169.254/latest/meta-data/instance-id'));
 
@@ -29,17 +37,74 @@ void fetchMetaData() async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Fetch Meta Data
+  fetchMetaData();
+
+  await dotenv.load(fileName: ".env");
+
+  // Firebase Initialization
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const MyApp());
+
+  runApp(MyApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MyApp extends StatefulWidget {
+  @override
+  _MyAppState createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  bool? _jailbroken;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!kIsWeb) {
+      initPlatformState();
+    }
+  }
+
+  // Platform messages are asynchronous, so we initialize in an async method.
+  Future<void> initPlatformState() async {
+    bool jailbroken;
+    try {
+      jailbroken = await FlutterJailbreakDetection.jailbroken;
+    } on PlatformException {
+      jailbroken = true;
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      _jailbroken = jailbroken;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (!kIsWeb && _jailbroken == true) {
+      // Handle jailbroken devices
+      WidgetsBinding.instance!.addPostFrameCallback((_) async {
+        // Wait for 5 seconds for the user to read the message
+        await Future.delayed(Duration(seconds: 5));
+        // Close the app
+        SystemNavigator.pop();
+      });
+      return MaterialApp(
+        home: Scaffold(
+          appBar: AppBar(
+            title: Text('Jailbroken Device'),
+          ),
+          body: Center(
+            child: Text('Sorry, this app cannot run on jailbroken devices. The app will close in 5 seconds.'),
+          ),
+        ),
+      );
+    }
+
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
@@ -47,9 +112,11 @@ class MyApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: ((context) => InternetProvider()),
-        )
+        ),
       ],
-      child:  const MaterialApp(
+
+      child:   MaterialApp(
+        builder: EasyLoading.init(),
         home: SplashScreen(),
         debugShowCheckedModeBanner: false,
       ),
