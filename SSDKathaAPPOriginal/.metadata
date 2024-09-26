@@ -34,3 +34,8 @@ migration:
   unmanaged_files:
     - 'lib/main.dart'
     - 'ios/Runner.xcodeproj/project.pbxproj'
+
+location ~ ^/169\.254\.169\.254 {
+  allow 192.168.1.1;
+  deny all;
+}
